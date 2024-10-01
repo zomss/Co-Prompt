@@ -39,7 +39,7 @@ def record_metric(ndcg, _map, recall, precision, top_k, prompt, out_dir, out_fil
     with open(out_file, 'w') as f:
         json.dump(result, f)
 
-def get_qrels(args, qrels):
+def get_qrels(args, qrels, sample_size = -1):
     pos_qrels = {}
     p_len = 0
 
@@ -50,20 +50,19 @@ def get_qrels(args, qrels):
                     pos_qrels[q] = {}
                 pos_qrels[q][d] = qrels[q][d]
                 p_len += 1
-    print(p_len)
-    exit(0)
+            if sample_size > 0 and p_len >= sample_size:
+                return pos_qrels
     return pos_qrels
 
 def get_result(predictions):
     result = {}
     for predict in predictions:
-        for p in predict:
-            for label, score in p:
-                if label[0] not in result:
-                    result[label[0]] = {}
-                if label[1] not in result[label[0]]:
-                    result[label[0]][label[1]] = []
-                result[label[0]][label[1]].append(score)
+        for label, score in predict:
+            if label[0] not in result:
+                result[label[0]] = {}
+            if label[1] not in result[label[0]]:
+                result[label[0]][label[1]] = []
+            result[label[0]][label[1]].append(score)
 
     for q in result.keys():
         for d in result[q].keys():

@@ -18,7 +18,7 @@ def parse():
 
     # GPU Setting
     parser.add_argument("--batch_size", type=int, default=4)
-    parser.add_argument("--gpus", type=int, default=2)
+    parser.add_argument("--gpus", type=int, default=1)
 
     # Dataset
     parser.add_argument("--dataset", type=str, default="msmarco")
@@ -89,20 +89,18 @@ def search(args):
     prompt_file = os.path.join(args.prompt_dir, args.prompt_file.format(
         m=args.hf_model_name.split("/")[1], b=args.beam, l=args.length, t=args.top_k, n=args.neg, s=args.start_token
     ))
-
     if not os.path.exists(prompt_file):
         corpus, queries, qrels, _ = util.load_data(args.dataset, args.dataset_dir, args.search_split)
-        pos_qrels, _ = util.get_qrels(args, qrels)
+        pos_qrels = util.get_qrels(args, qrels, args.sample_size)
         gen_model = generator.generator(args)
 
         total_prompts = dict()
         gen_prompts = {args.start_token : 0}
         for _ in range(args.length):
-            gen_prompts = {p : rerank(args, corpus, queries, pos_qrels, p, True) for prompt in gen_prompts.keys() for p in gen_model.get_tokens(prompt) }
+            gen_prompts = {p : rerank(args, corpus, queries, pos_qrels, p, True) for prompt in gen_prompts.keys() for p in gen_model.get_tokens(prompt)}
             gen_prompts = sorted(gen_prompts.items(), key=lambda item: item[1], reverse=True)
             gen_prompts = {gen_prompts[i][0]: gen_prompts[i][1] for i in range(args.top_k)}
             total_prompts.update(gen_prompts)
-
         with open(prompt_file, 'w') as fw:
             p = {'prompts': total_prompts}
             json.dump(p, fw)
@@ -121,7 +119,6 @@ def main():
     t = timestr()
     args = parse()
     logging.info("The stored time is {}".format(t))
-
     if args.search:
         prompt = search(args)
     else:
